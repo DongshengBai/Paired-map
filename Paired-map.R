@@ -2097,7 +2097,10 @@ print("Loading Paired-seq/tag modules.")
 
 
 
-
+test_Paired_map <- function(){
+	print("Finished update.")
+	}
+					    
 
 
 
