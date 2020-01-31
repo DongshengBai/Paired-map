@@ -35,16 +35,10 @@ and LogMean normallize RNA matrix.
 ### 4. Dimension Reduction
 <p>Dimension reduction using PCA</p>
 
-<p> Run PCA for DNA matrix:</p>
-<code>data<-runPCA(data, input="dna")</code>
+<p> Run PCA for DNA matrix:<code>data<-runPCA(data, input="dna")</code></p>
+<p> Run PCA for RNA matrix: <code>data<-runPCA(data, input="rna")</code></p>
+<p> Run PCA for fused matrix: <code>data<-runPCA(data, input="int")</code></p>
 
-
-<p> Run PCA for RNA matrix:</p>
-<code>data<-runPCA(data, input="rna")</code>
-
-
-<p> Run PCA for fused matrix:</p>
-<code>data<-runPCA(data, input="int")</code>
 
   
 To be continued..
