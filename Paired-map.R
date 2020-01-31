@@ -642,8 +642,14 @@ print("Loading Paired-map functions...")
 			if(input=="tag"){rmat=obj@dis@rmat.tag}
 			p1=obj@dis@p1
 			p2=obj@dis@p2
-			model.init=trainRegressModel(rmat, p1, p2) ### adopted from SnapATAC
-			nmat=normObservedJmat(rmat, model.init, p1, p2, method=method) ### adopted from SnapATAC
+
+			if(method=="zscore" || method=="residual"){
+				model.init=trainRegressModel(rmat, p1, p2) ### adopted from SnapATAC
+				nmat=normObservedJmat(rmat, model.init, p1, p2, method=method) ### adopted from SnapATAC
+			}
+			if(method=="none"){
+				nmat=rmat
+			}
 			if(row.center||row.scale){
 				nmat=t(scale(t(nmat),center=row.center, scale=row.scale))
 			}
@@ -695,16 +701,16 @@ print("Loading Paired-map functions...")
 	}
 
 	{ ## runUMAP
-		runUMAP<-function(obj, input, use.dims,...){
+		runUMAP<-function(obj, input, k, use.dims,...){
 			UseMethod("runUMAP")
 		}
-		runUMAP.default<-function(obj, input, use.dims=c(1,10),...){
+		runUMAP.default<-function(obj, input, k=15, use.dims=c(1,10),...){
 			if(missing(obj)){stop("Are you kidding me?")}
 			if(missing(input)){stop("Please specify an input matrix")}
 			if(input=="dna"){mat=obj@pca@dmat.dna[,use.dims]}
 			if(input=="rna"){mat=obj@pca@dmat.rna[,use.dims]}
 			if(input=="tag"){mat=obj@pca@dmat.tag[,use.dims]}
-			umap.out<-umap(mat, n_neighbors=15, verbose=T, n_threads=8)
+			umap.out<-umap(mat, n_neighbors=k, verbose=T, n_threads=8)
 			if(input=="dna"){obj@umap@vis.dna<-umap.out}
 			if(input=="rna"){obj@umap@vis.rna<-umap.out}
 			if(input=="tag"){obj@umap@vis.tag<-umap.out}
