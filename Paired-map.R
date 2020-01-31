@@ -540,7 +540,7 @@ print("Loading Paired-map functions...")
 				if(dim(obj@mat.nor@mat.tag)[1]<1L){
 					stop("Tag matrix not normalized.")
 				}
-				mat.input=obj@mat.norm@mat.tag
+				mat.input=obj@mat.nor@mat.tag
 			}
 			mat.use<-mat.input[,cell.use]
 			umi.mat.use<-rowSums(mat.use)
@@ -681,7 +681,7 @@ print("Loading Paired-map functions...")
 
 	{ ## runUMAP
 		runUMAP<-function(obj, input, use.dims,...){
-			useMethod("runUMAP")
+			UseMethod("runUMAP")
 		}
 		runUMAP.default<-function(obj, input, use.dims=c(1,10),...){
 			if(missing(obj)){stop("Are you kidding me?")}
@@ -713,9 +713,10 @@ print("Loading Paired-map functions...")
 			nw.norm = graph_from_data_frame(knn.norm, directed = FALSE)
 			nw.norm = simplify(nw.norm)
 			lc.norm.combine = cluster_louvain(nw.norm)
-			if(input=="dna"){obj@cluster@id.dna=lc.norm.combine$membership}
-			if(input=="rna"){obj@cluster@id.rna=lc.norm.combine$membership}
-			if(input=="tag"){obj@cluster@id.tag=lc.norm.combine$membership}
+			if(input=="dna"){obj@cluster@id.dna=factor(lc.norm.combine$membership)}
+			if(input=="rna"){obj@cluster@id.rna=factor(lc.norm.combine$membership)}
+			if(input=="tag"){obj@cluster@id.tag=factor(lc.norm.combine$membership)}
+			return(obj)
 		}
 	} # end of cluster
 
