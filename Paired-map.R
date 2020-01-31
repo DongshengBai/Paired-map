@@ -245,10 +245,10 @@ print("Loading Paired-map functions...")
 		cluster<-setClass(
 			Class="cluster",
 			slots=list(
-				id.rna="factor",
-				id.dna="factor",	
-				id.tag="factor",
-				id.int="factor",
+				id.rna="numeric",
+				id.dna="numeric",	
+				id.tag="numeric",
+				id.int="numeric",
 				method="character"
 			)
 		)
@@ -259,10 +259,10 @@ print("Loading Paired-map functions...")
 			}
 		)
 		newCluster<-function(){
-			id.rna=factor()
-			id.dna=factor()
-			id.tag=factor()
-			id.int=factor()
+			id.rna=numeric()
+			id.dna=numeric()
+			id.tag=numeric()
+			id.int=numeric()
 			method=character()
 		}
 	} # end of cluster class
@@ -425,9 +425,19 @@ print("Loading Paired-map functions...")
 			return(obj)
 		}
 		logNormalize<-function(input){
-			mat.log<-log(input+1)
+			mat.log<-log10(input+1)
 			mat.colsum<-colSums(mat.log)
 			mean.colsum<-mean(mat.colsum)
+			scale.factor<-mat.colsum/mean.colsum
+			mat.nor<-t(mat.log)/scale.factor
+			mat.nor<-t(mat.nor)
+			return(mat.nor)
+		}
+		logMedian<-function(input){
+			mat.log<-log10(input+1)
+			mat.colsum<-colSums(mat.log)
+			mean.colsum<-median(mat.colsum)
+
 			scale.factor<-mat.colsum/mean.colsum
 			mat.nor<-t(mat.log)/scale.factor
 			mat.nor<-t(mat.nor)
@@ -461,7 +471,12 @@ print("Loading Paired-map functions...")
 			}
 			else if(method=="logMean"){
 				nor_mat<-logNormalize(filt_mat)
-			}else{stop("Please specify a method: binary/logMean")}
+			}else if(method=="none"){
+				nor_mat<-filt_mat
+			}else if(method=="logMedian"){
+				nor_mat<-logMedian(filt_mat)
+			}
+			else{stop("Please specify a method: binary/logMean")}
 			if(input=="dna"){obj@mat.filt@mat.dna<-filt_mat;obj@mat.filt@bins.dna=filt_features;obj@mat.nor@mat.dna<-nor_mat}
 			if(input=="rna"){obj@mat.filt@mat.rna<-filt_mat;obj@mat.filt@genes=filt_features;obj@mat.nor@mat.rna<-nor_mat}
 			if(input=="tag"){obj@mat.filt@mat.tag<-filt_mat;obj@mat.filt@bins.tag=filt_features;obj@mat.nor@mat.tag<-nor_mat}
@@ -713,9 +728,9 @@ print("Loading Paired-map functions...")
 			nw.norm = graph_from_data_frame(knn.norm, directed = FALSE)
 			nw.norm = simplify(nw.norm)
 			lc.norm.combine = cluster_louvain(nw.norm)
-			if(input=="dna"){obj@cluster@id.dna=factor(lc.norm.combine$membership)}
-			if(input=="rna"){obj@cluster@id.rna=factor(lc.norm.combine$membership)}
-			if(input=="tag"){obj@cluster@id.tag=factor(lc.norm.combine$membership)}
+			if(input=="dna"){obj@cluster@id.dna=(lc.norm.combine$membership)}
+			if(input=="rna"){obj@cluster@id.rna=(lc.norm.combine$membership)}
+			if(input=="tag"){obj@cluster@id.tag=(lc.norm.combine$membership)}
 			return(obj)
 		}
 	} # end of cluster
@@ -723,7 +738,21 @@ print("Loading Paired-map functions...")
 	{ ## plotEbd
 	} # end of plotEbd
 
-
+	colPanel = c(
+		"grey", "#E31A1C", "#FFD700", "#771122", "#777711", "#1F78B4", "#68228B", "#AAAA44",
+		"#60CC52", "#771155", "#DDDD77", "#774411", "#AA7744", "#AA4455", "#117744", 
+		"#000080", "#44AA77", "#AA4488", "#DDAA77", "#D9D9D9", "#BC80BD", "#FFED6F",
+	    "#7FC97F", "#BEAED4", "#FDC086", "#FFFF99", "#386CB0", "#F0027F", "#BF5B17",
+	    "#666666", "#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02",
+	    "#A6761D", "#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C", "#FB9A99", "#E31A1C",
+	    "#FDBF6F", "#FF7F00", "#CAB2D6", "#6A3D9A", "#B15928", "#FBB4AE", "#B3CDE3",
+	    "#CCEBC5", "#DECBE4", "#FED9A6", "#FFFFCC", "#E5D8BD", "#FDDAEC", "#F2F2F2",
+	    "#B3E2CD", "#FDCDAC", "#CBD5E8", "#F4CAE4", "#E6F5C9", "#FFF2AE", "#F1E2CC",
+	    "#CCCCCC", "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FFFF33", "#A65628",
+	    "#F781BF", "#999999", "#66C2A5", "#FC8D62", "#8DA0CB", "#E78AC3", "#A6D854",
+	    "#FFD92F", "#E5C494", "#B3B3B3", "#8DD3C7", "#FFFFB3", "#BEBADA", "#FB8072",
+	    "#80B1D3", "#FDB462", "#B3DE69", "#FCCDE5"
+  )
 
 } # end of Paired-map functions
 
