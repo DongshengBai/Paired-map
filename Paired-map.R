@@ -4,7 +4,7 @@
 #### 2020-01-29
 #### col = cell, row = features!!!
 #### n = cell, m = features!!!
-version="2020.01.30"
+version="2020.01.31"
 
 ###
 { ### External packages
@@ -424,22 +424,21 @@ print("Loading Paired-map functions...")
 			obj@project=project
 			return(obj)
 		}
-		logNormalize<-function(input){
-			mat.log<-log10(input+1)
-			mat.colsum<-colSums(mat.log)
+		logMean<-function(input){
+			mat.colsum<-colSums(input)
 			mean.colsum<-mean(mat.colsum)
 			scale.factor<-mat.colsum/mean.colsum
-			mat.nor<-t(mat.log)/scale.factor
+			mat.nor<-t(input)/scale.factor
+			mat.nor<-log(mat.nor+1)
 			mat.nor<-t(mat.nor)
 			return(mat.nor)
 		}
 		logMedian<-function(input){
-			mat.log<-log10(input+1)
-			mat.colsum<-colSums(mat.log)
+			mat.colsum<-colSums(input)
 			mean.colsum<-median(mat.colsum)
-
 			scale.factor<-mat.colsum/mean.colsum
-			mat.nor<-t(mat.log)/scale.factor
+			mat.nor<-t(input)/scale.factor
+			mat.nor<-log(mat.nor+1)
 			mat.nor<-t(mat.nor)
 			return(mat.nor)
 		}
@@ -450,6 +449,7 @@ print("Loading Paired-map functions...")
 			if(missing(obj)){stop("No Paired-seq dataset available...")}
 			if(missing(input)){stop("Please define a matrix type.. dna/rna/tag")}
 			if(missing(method)){stop("Please specify a method: binary/logMean")}
+			input<-tolower(input)
 			if(input=="dna"){raw_mat<-obj@mat.raw@mat.dna; features<-obj@mat.raw@bins.dna}
 			if(input=="rna"){raw_mat<-obj@mat.raw@mat.rna; features<-obj@mat.raw@genes}
 			if(input=="tag"){raw_mat<-obj@mat.raw@mat.rna; features<-obj@mat.raw@bins.tag}
@@ -470,7 +470,7 @@ print("Loading Paired-map functions...")
 				nor_mat@x[nor_mat@x>0]<-1
 			}
 			else if(method=="logMean"){
-				nor_mat<-logNormalize(filt_mat)
+				nor_mat<-logMean(filt_mat)
 			}else if(method=="none"){
 				nor_mat<-filt_mat
 			}else if(method=="logMedian"){
@@ -520,7 +520,7 @@ print("Loading Paired-map functions...")
 		}
 		runDistance.default<-function(obj, input, feature.downsample=1, cell.downsample=1, seed.use=131, method){
 			if(missing(obj)){stop("No input object...")}
-			if(missing(input)){stop("Please specify a input matrix...")}
+			if(missing(input)){stop("Please specify a input matrix...")};input<-tolower(input)
 			if(missing(method)){stop("Please. specify a method... jaccard/euclidean")}
 			if(length(obj@cell.downsample)>10L){
 				cell.use<-obj@cell.downsample
@@ -682,7 +682,7 @@ print("Loading Paired-map functions...")
 		}
 		runPCA.default<-function(obj,input,n=50){
 			if(missing(obj)){stop("Are you kidding me?")}
-			if(missing(input)){stop("Please specify an input matrix")}
+			if(missing(input)){stop("Please specify an input matrix")};input<-tolower(input)
 			if(input=="dna"){mat=obj@dis@nmat.dna}
 			if(input=="rna"){mat=obj@dis@nmat.rna}
 			if(input=="tag"){mat=obj@dis@nmat.tag}
@@ -715,7 +715,7 @@ print("Loading Paired-map functions...")
 		}
 		runUMAP.default<-function(obj, input, k=15, use.dims=c(1,10),...){
 			if(missing(obj)){stop("Are you kidding me?")}
-			if(missing(input)){stop("Please specify an input matrix")}
+			if(missing(input)){stop("Please specify an input matrix")};input<-tolower(input)
 			if(input=="dna"){mat=obj@pca@dmat.dna[,use.dims]}
 			if(input=="rna"){mat=obj@pca@dmat.rna[,use.dims]}
 			if(input=="tag"){mat=obj@pca@dmat.tag[,use.dims]}
@@ -730,14 +730,14 @@ print("Loading Paired-map functions...")
 		}
 		runTSNE.default<-function(obj, input, iter=500, use.dims=c(1,10),...){
 			if(missing(obj)){stop("Are you kidding me?")}
-			if(missing(input)){stop("Please specify an input matrix")}
+			if(missing(input)){stop("Please specify an input matrix")};input<-tolower(input)
 			if(input=="dna"){mat=obj@pca@dmat.dna[,use.dims]}
 			if(input=="rna"){mat=obj@pca@dmat.rna[,use.dims]}
 			if(input=="tag"){mat=obj@pca@dmat.tag[,use.dims]}
-			tsne.out<-Rtsne(mat, n_neighbors=k, pca=FALSE, verbose="verbose", num_threads=8, max_iter=iter, ...)$Y
-			if(input=="dna"){obj@tsne@vis.dna<-tsne.out}
-			if(input=="rna"){obj@tsne@vis.rna<-tsne.out}
-			if(input=="tag"){obj@tsne@vis.tag<-tsne.out}
+			tsne.out<-Rtsne(mat, n_neighbors=k, pca=FALSE, verbose=T, num_threads=8, max_iter=iter, ...)
+			if(input=="dna"){obj@tsne@vis.dna<-tsne.out$Y}
+			if(input=="rna"){obj@tsne@vis.rna<-tsne.out$Y}
+			if(input=="tag"){obj@tsne@vis.tag<-tsne.out$Y}
 			return(obj)
 		}
 
@@ -749,7 +749,7 @@ print("Loading Paired-map functions...")
 		}
 		runCluster.default<-function(obj,input,seed.use=131,use.dims=c(1,10),k=15,...){
 			if(missing(obj)){stop("No object...\n")}
-			if(missing(input)){stop("Please specify an input matrix")}
+			if(missing(input)){stop("Please specify an input matrix")};input<-tolower(input)
 			if(input=="dna"){mat=obj@pca@dmat.dna[,use.dims]}
 			if(input=="rna"){mat=obj@pca@dmat.rna[,use.dims]}
 			if(input=="tag"){mat=obj@pca@dmat.tag[,use.dims]}
@@ -771,62 +771,77 @@ print("Loading Paired-map functions...")
 	}
 
 	{ ## plotFeature
-		plotFeature<-function(obj, feature, feature.type, norm.frac, norm.log,embedding.use, embedding.type,outlies, title,pch,cex...){
+		plotFeature<-function(obj, feature, feature.type, norm.frac, norm.log,embedding.use, embedding.type,outlies, title,pch,cex, legend,legend.position...){
 			UseMethod("plotFeature", obj)
 		}
-		plotFeature<-function(obj, feature, feature.type="rna", norm.frac=FALSE, norm.log=FALSE, outliers=c(0.01,0.99),embedding.use="umap",pch=19, cex=0.5, title,embedding.type=feature.type,...){
+		plotFeature<-function(obj, feature, feature.type="rna", norm.frac=FALSE, norm.log=FALSE, outliers=c(0.01,0.99),embedding.use="umap",pch=19, cex=0.5, title,embedding.type=feature.type,legend.position="right",legend=F,...){
 			if(missing(obj)){stop("Please specify an object..\n")}
 			if(missing(feature)){stop("Please specify an feature...\n")}
-			if(feature.type=="rna"){
-				idx=which(obj@mat.raw@genes==feature)
-				if(length(idx)==0){stop("Cannot find ", feature, "\n", sep="")}
-				feature.value=obj@mat.raw@mat.rna[idx,]
-				col=col.geneExpr
-			}else	if(feature.type=="dna"){
-				idx=which(obj@mat.raw@bins.dna==feature)
-				if(length(idx)==0){stop("Cannot find ", feature, "\n", sep="")}
-				feature.value=obj@mat.raw@mat.rna[idx,]
-				col=col.promAccs
-			}else{stop("Unsupported feature type")}
-
-			if(missing(title)){title=paste(feature.type, "on", embedding.type, embedding.use, sep=" ")}
-
-			## normalize with cell size
-			if(norm.frac){
-				if(feature.type=="rna"){
-					cell.size<-colSums(obj@mat.raw@mat.rna)
-				}else if(feature.type=="dna"){
-					cell.size<-colSums(obj@mat.raw@mat.dna)
+			feature.type<-tolower(feature.type)
+			if(feature=="cluster"){
+				if(feature.type=="dna"){
+					feature.value=obj@cluster@id.dna
+				}else if(feature.type=="rna"){
+					feature.value=obj@cluster@id.rna
+				}else if(feature.type=="tag"){
+					feature.value=obj@cluster@id.tag
+				}else if(feature.type=="int"){
+					feature.value=obj@cluster@id.int
 				}
-				feature.value<-feature.value/cell.size
+				col=colPanel
+				legend=T
+			}else{
+				if((feature.type)=="rna"){
+					idx=which(obj@mat.raw@genes==feature)
+					if(length(idx)==0){stop("Cannot find ", feature, "\n", sep="")}
+					feature.value=obj@mat.raw@mat.rna[idx,]
+					col=col.geneExpr
+				}else	if((feature.type)=="dna"){
+					idx=which(obj@mat.raw@bins.dna==feature)
+					if(length(idx)==0){stop("Cannot find ", feature, "\n", sep="")}
+					feature.value=obj@mat.raw@mat.rna[idx,]
+					col=col.promAccs
+				}
+
+				if(norm.frac){
+					if(feature.type=="rna"){
+						cell.size<-colSums(obj@mat.raw@mat.rna)
+					}else if(feature.type=="dna"){
+						cell.size<-colSums(obj@mat.raw@mat.dna)
+					}
+					feature.value<-feature.value/cell.size
+				}
+				## log normalize
+				if(norm.log){
+					feature.value=log(feature.value+1)
+				}
+				## filter outliers
+				outlier.low=quantile(feature.value, outliers[1])
+				outlier.high=quantile(feature.value, outliers[2])
+				feature.value[feature.value>outlier.high]=outlier.high
+				feature.value[feature.value<outlier.low]=outlier.low
+				feature.value<-minMaxScaling(feature.value)*9+1
 			}
-			## log normalize
-			if(norm.log){
-				feature.value=log(feature.value+1)
-			}
 
-			## filter outliers
-			outlier.low=quantile(feature.value, outliers[1])
-			outlier.high=quantile(feature.value, outliers[2])
-			feature.value[feature.value>outlier.high]=outlier.high
-			feature.value[feature.value<outlier.low]=outlier.low
+			if(missing(title)){title=paste(toupper(feature.type), feature, "on", toupper(embedding.type), toupper(embedding.use), sep=" ")}
+			if(tolower(embedding.use)=="umap"&&tolower(embedding.type)=="rna"){mat=obj@umap@vis.rna}
+			if(tolower(embedding.use)=="umap"&&tolower(embedding.type)=="dna"){mat=obj@umap@vis.dna}
+			if(tolower(embedding.use)=="umap"&&tolower(embedding.type)=="tag"){mat=obj@umap@vis.tag}
+			if(tolower(embedding.use)=="tsne"&&tolower(embedding.type)=="rna"){mat=obj@tsne@vis.rna}
+			if(tolower(embedding.use)=="tsne"&&tolower(embedding.type)=="dna"){mat=obj@tsne@vis.dna}
+			if(tolower(embedding.use)=="tsne"&&tolower(embedding.type)=="tag"){mat=obj@tsne@vis.tag}
 
-			feature.value<-minMaxScaling(feature.value)*9+1
-
-			if(embedding.use=="umap"&&embedding.type=="rna"){mat=obj@umap@vis.rna}
-			if(embedding.use=="umap"&&embedding.type=="dna"){mat=obj@umap@vis.dna}
-			if(embedding.use=="umap"&&embedding.type=="tag"){mat=obj@umap@vis.tag}
-			if(embedding.use=="tsne"&&embedding.type=="rna"){mat=obj@tsne@vis.rna}
-			if(embedding.use=="tsne"&&embedding.type=="dna"){mat=obj@tsne@vis.dna}
-			if(embedding.use=="tsne"&&embedding.type=="tag"){mat=obj@tsne@vis.tag}
-
-			plot(mat, pch=pch,cex=cex,col=col[feature.value],main=title,...)
+			xdiff<-max(mat[,1])-min(mat[,1])
+			xlim<-c(min(mat[,1])-0.015*xdiff, max(mat[,2])+0.015*xdiff)
+			if(legend){ncol=as.integer(max(feature.value/25)+1); xlim=c(min(mat[,1])-0.015*xdiff, max(mat[,1])+(0.015+0.1*ncol)*xdiff)}
+			plot(mat, pch=pch,cex=cex,col=col[feature.value],main=title,xlab="Dim1", ylab="Dim2",xlim=xlim,...)
+			if(legend){legend("right", legend=c(1:max(feature.value)), border=NULL, pch=19, cex=0.5, ncol=ncol, bty="n", col=col[feature.value])}
 
 		}
 	} # end of plotFeature
 
 	colPanel = c(
-		"grey", "#E31A1C", "#FFD700", "#771122", "#777711", "#1F78B4", "#68228B", "#AAAA44",
+		"#E31A1C", "#FFD700", "#771122", "#777711", "#1F78B4", "#68228B", "#AAAA44",
 		"#60CC52", "#771155", "#DDDD77", "#774411", "#AA7744", "#AA4455", "#117744", 
 		"#000080", "#44AA77", "#AA4488", "#DDAA77", "#D9D9D9", "#BC80BD", "#FFED6F",
 	    "#7FC97F", "#BEAED4", "#FDC086", "#FFFF99", "#386CB0", "#F0027F", "#BF5B17",
