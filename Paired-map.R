@@ -23,13 +23,13 @@ version="2020.01.30"
 	library(stats)
 	if (!require(GenomicRanges)) install.packages('GenomicRanges')
 	library(GenomicRanges)
+	if (!require(igraph)) install.packages('igraph')
+	library(igraph)
+	if (!require(FNN)) install.packages('FNN')
+	library(FNN)	
 	#if (!require(parallel)) install.packages('parallel')
 	#library(parallel)
-	#if (!require(igraph)) install.packages('igraph')
-	#library(igraph)
 	#if (!require(BiocGenerics)) install.packages('BiocGenerics')
-	#if (!require(FNN)) install.packages('FNN')
-	#library(FNN)	
 	#library(BiocGenerics)
 	#if (!require(GenomeInfoDb)) install.packages('GenomeInfoDb')
 	#library(GenomeInfoDb)
@@ -356,9 +356,9 @@ print("Loading Paired-map functions...")
 			## Loading RNA matrix
 			rna_mat=readMM(paste(rna, "matrix.mtx", sep="/"))
 			rna_bc=read.csv(paste(rna,"barcodes.tsv",sep="/"), head=F)
-			rna_genes=read.csv(paste(rna, "genes.tsv",sep="/"), head=F)
+			rna_genes=read.csv(paste(rna, "genes.tsv",sep="/"),sep="\t", head=F)
 			colnames(rna_mat)<-rna_bc[,1]
-			rownames(rna_mat)<-rna_genes[,1]
+			rownames(rna_mat)<-rna_genes[,2]
 			rm(rna_bc)
 			rm(rna_genes)
 			## report RNA matrix stats
@@ -528,14 +528,18 @@ print("Loading Paired-map functions...")
 				not_new=1
 			}
 			else{
-
 				if(cell.downsample>1 || cell.downsample<0){cell.downsample=1}
-				cell.use.size=as.integer(length(obj@barcode)*cell.downsample)
-				#cell.use<-c(rep(TRUE, cell.use.size), rep(FALSE, length(obj@barcode)-cell.use.size))
-				set.seed(seed.use)
-				cell.use=sample(length(obj@barcode), cell.use.size)
-				#cell.use<-cell.use[sample(length(obj@barcode))]
-				obj@cell.downsample=cell.use
+				if(cell.downsample==1){
+					cell.use=c(1:length(obj@barcode))
+				}
+				else{
+					cell.use.size=as.integer(length(obj@barcode)*cell.downsample)
+					#cell.use<-c(rep(TRUE, cell.use.size), rep(FALSE, length(obj@barcode)-cell.use.size))
+					set.seed(seed.use)
+					cell.use=sample(length(obj@barcode), cell.use.size)
+					#cell.use<-cell.use[sample(length(obj@barcode))]
+					obj@cell.downsample=cell.use
+				}
 				not_new=0
 			}
 			if(feature.downsample>1 || feature.downsample<0){feature.downsample=1}
@@ -558,17 +562,22 @@ print("Loading Paired-map functions...")
 				mat.input=obj@mat.nor@mat.tag
 			}
 			mat.use<-mat.input[,cell.use]
-			umi.mat.use<-rowSums(mat.use)
-			feature.use.size=as.integer(feature.downsample*dim(mat.input)[1])
-			if(length(umi.mat.use[umi.mat.use>0])<feature.use.size){
-				cat("Too few features with non-zero sum. Using all non-zero features.\n")
-				feature.use.size=length(umi.mat.use[umi.mat.use>0])
+			if(feature.downsample == 1){
+				mat.ref<-mat.use
 			}
-			feature.order.pool<-rev(order(umi.mat.use))[1:feature.use.size]
-			set.seed(seed.use)
-			feature.use<-sample(feature.order.pool, feature.use.size)
-			mat.use<-mat.input[feature.use,]
-			mat.ref<-mat.input[feature.use,cell.use]
+			else{
+				umi.mat.use<-rowSums(mat.use)
+				feature.use.size=as.integer(feature.downsample*dim(mat.input)[1])
+				if(length(umi.mat.use[umi.mat.use>0])<feature.use.size){
+					cat("Too few features with non-zero sum. Using all non-zero features.\n")
+					feature.use.size=length(umi.mat.use[umi.mat.use>0])
+				}
+				feature.order.pool<-rev(order(umi.mat.use))[1:feature.use.size]
+				set.seed(seed.use)
+				feature.use<-sample(feature.order.pool, feature.use.size)
+				mat.use<-mat.input[feature.use,]
+				mat.ref<-mat.input[feature.use,cell.use]
+			}
 			## check
 			if(method=="jaccard"){
 				cat("Calulating Jaccard Matrix...\n")
@@ -710,10 +719,25 @@ print("Loading Paired-map functions...")
 			if(input=="dna"){mat=obj@pca@dmat.dna[,use.dims]}
 			if(input=="rna"){mat=obj@pca@dmat.rna[,use.dims]}
 			if(input=="tag"){mat=obj@pca@dmat.tag[,use.dims]}
-			umap.out<-umap(mat, n_neighbors=k, verbose=T, n_threads=8)
+			umap.out<-umap(mat, n_neighbors=k, verbose=T, n_threads=8, ...)
 			if(input=="dna"){obj@umap@vis.dna<-umap.out}
 			if(input=="rna"){obj@umap@vis.rna<-umap.out}
 			if(input=="tag"){obj@umap@vis.tag<-umap.out}
+			return(obj)
+		}
+		runTSNE<-function(obj, input, iter, use.dims,...){
+			UseMethod("runTSNE")
+		}
+		runTSNE.default<-function(obj, input, iter=500, use.dims=c(1,10),...){
+			if(missing(obj)){stop("Are you kidding me?")}
+			if(missing(input)){stop("Please specify an input matrix")}
+			if(input=="dna"){mat=obj@pca@dmat.dna[,use.dims]}
+			if(input=="rna"){mat=obj@pca@dmat.rna[,use.dims]}
+			if(input=="tag"){mat=obj@pca@dmat.tag[,use.dims]}
+			tsne.out<-Rtsne(mat, n_neighbors=k, pca=FALSE, verbose="verbose", num_threads=8, max_iter=iter, ...)$Y
+			if(input=="dna"){obj@tsne@vis.dna<-tsne.out}
+			if(input=="rna"){obj@tsne@vis.rna<-tsne.out}
+			if(input=="tag"){obj@tsne@vis.tag<-tsne.out}
 			return(obj)
 		}
 
@@ -740,9 +764,66 @@ print("Loading Paired-map functions...")
 			return(obj)
 		}
 	} # end of cluster
+	col.geneExpr<-colorRampPalette(c("gray85", "forestgreen", "darkgreen"))(10)
+	col.promAccs<-colorRampPalette(c("gray85", "deepskyblue3", "deepskyblue4"))(10)
+	minMaxScaling<-function(x){
+		return((x-min(x))/(max(x)-min(x)))
+	}
 
-	{ ## plotEbd
-	} # end of plotEbd
+	{ ## plotFeature
+		plotFeature<-function(obj, feature, feature.type, norm.frac, norm.log,embedding.use, embedding.type,outlies, title,pch,cex...){
+			UseMethod("plotFeature", obj)
+		}
+		plotFeature<-function(obj, feature, feature.type="rna", norm.frac=FALSE, norm.log=FALSE, outliers=c(0.01,0.99),embedding.use="umap",pch=19, cex=0.5, title,embedding.type=feature.type,...){
+			if(missing(obj)){stop("Please specify an object..\n")}
+			if(missing(feature)){stop("Please specify an feature...\n")}
+			if(feature.type=="rna"){
+				idx=which(obj@mat.raw@genes==feature)
+				if(length(idx)==0){stop("Cannot find ", feature, "\n", sep="")}
+				feature.value=obj@mat.raw@mat.rna[idx,]
+				col=col.geneExpr
+			}else	if(feature.type=="dna"){
+				idx=which(obj@mat.raw@bins.dna==feature)
+				if(length(idx)==0){stop("Cannot find ", feature, "\n", sep="")}
+				feature.value=obj@mat.raw@mat.rna[idx,]
+				col=col.promAccs
+			}else{stop("Unsupported feature type")}
+
+			if(missing(title)){title=paste(feature.type, "on", embedding.type, embedding.use, sep=" ")}
+
+			## normalize with cell size
+			if(norm.frac){
+				if(feature.type=="rna"){
+					cell.size<-colSums(obj@mat.raw@mat.rna)
+				}else if(feature.type=="dna"){
+					cell.size<-colSums(obj@mat.raw@mat.dna)
+				}
+				feature.value<-feature.value/cell.size
+			}
+			## log normalize
+			if(norm.log){
+				feature.value=log(feature.value+1)
+			}
+
+			## filter outliers
+			outlier.low=quantile(feature.value, outliers[1])
+			outlier.high=quantile(feature.value, outliers[2])
+			feature.value[feature.value>outlier.high]=outlier.high
+			feature.value[feature.value<outlier.low]=outlier.low
+
+			feature.value<-minMaxScaling(feature.value)*9+1
+
+			if(embedding.use=="umap"&&embedding.type=="rna"){mat=obj@umap@vis.rna}
+			if(embedding.use=="umap"&&embedding.type=="dna"){mat=obj@umap@vis.dna}
+			if(embedding.use=="umap"&&embedding.type=="tag"){mat=obj@umap@vis.tag}
+			if(embedding.use=="tsne"&&embedding.type=="rna"){mat=obj@tsne@vis.rna}
+			if(embedding.use=="tsne"&&embedding.type=="dna"){mat=obj@tsne@vis.dna}
+			if(embedding.use=="tsne"&&embedding.type=="tag"){mat=obj@tsne@vis.tag}
+
+			plot(mat, pch=pch,cex=cex,col=col[feature.value],main=title,...)
+
+		}
+	} # end of plotFeature
 
 	colPanel = c(
 		"grey", "#E31A1C", "#FFD700", "#771122", "#777711", "#1F78B4", "#68228B", "#AAAA44",
@@ -759,6 +840,7 @@ print("Loading Paired-map functions...")
 	    "#FFD92F", "#E5C494", "#B3B3B3", "#8DD3C7", "#FFFFB3", "#BEBADA", "#FB8072",
 	    "#80B1D3", "#FDB462", "#B3DE69", "#FCCDE5"
   )
+
 
 } # end of Paired-map functions
 
