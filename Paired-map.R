@@ -27,6 +27,8 @@ version="2020.01.31"
 	library(igraph)
 	if (!require(FNN)) install.packages('FNN')
 	library(FNN)	
+	if (!require(matrixcalc)) install.packages('matrixcalc')
+	library(matrixcalc)	
 	#if (!require(parallel)) install.packages('parallel')
 	#library(parallel)
 	#if (!require(BiocGenerics)) install.packages('BiocGenerics')
@@ -70,9 +72,9 @@ print("Loading Paired-map functions...")
 				nmat.tag="MatrixOrmatrix",
 				norm.tag="logical",
 				method.tag="character",
-				imat="MatrixOrmatrix",
-				imat.method="character",
-				imat.input="character",
+				nmat.int="MatrixOrmatrix",
+				int.method="character",
+				int.input="character",
 				p1="numeric",
 				p2="numeric"
 			)
@@ -676,6 +678,35 @@ print("Loading Paired-map functions...")
 		}
 	} # end of runNormDistance
 
+	{ ## runFusionMatrices
+		runFusionMatrices<-function(obj, use.rna, use.dna, use.tag, method){
+			UseMethod("runFusionMatrices", obj)
+		}
+		runFusionMatrices.default<-function(obj, use.rna=T, use.dna=T, use.tag=F, method="hadamard"){
+			if(missing(obj)){stop("Please specify an object...\n")}
+			method=tolower(method)
+			# specify input matrices
+			use.three=FALSE
+			if(use.rna && use.dna && !use.tag){mat1=obj@dis@nmat.rna;mat2=obj@dis@nmat.dna;cat("Fuse RNA and DNA matrices...\n");obj@dis@int.input="RNA+DNA"}
+			else if(use.rna && !use.dna && use.tag){mat1=obj@dis@nmat.rna;mat2=obj@dis@nmat.tag;cat("Fuse RNA and Tag matrices...\n");obj@dis@int.input="RNA+Tag"}
+			else if(!use.rna && use.dna && use.tag){mat1=obj@dis@nmat.dna;mat2=obj@dis@nmat.tag;cat("Fuse DNA and Tag matrices...\n");obj@dis@int.input="DNA+Tag"}
+			else if(use.rna && use.dna && use.tag){mat1=obj@dis@nmat.rna;mat2=obj@dis@nmat.dna;mat3=obj@dis@nmat.tag;use.three<-TRUE;cat("Fuse three matrices...\n");obj@dis@int.input="RNA+DNA+Tag"}
+			mat1<-minMaxScaling(mat1)
+			mat2<-minMaxScaling(mat2)
+			if(use.three){mat3<-minMaxScaling(mat3)}
+			if(method=="hadamard"){
+				nmat.int<-hadamard.prod(mat1, mat2)
+				if(use.three){nmat.int<-hadamard.prod(nmat.int, mat3)}
+				obj@dis@int.method="hadamard"
+			}
+			else{
+				stop(method, "not supported..", sep=" ")
+			}
+			obj@dis@nmat.int=nmat.int
+			return(obj)
+		}
+	} # end of runFusionMatrices
+
 	{ ## pca
 		runPCA<-function(obj,input,n){
 			UseMethod("runPCA")
@@ -686,6 +717,7 @@ print("Loading Paired-map functions...")
 			if(input=="dna"){mat=obj@dis@nmat.dna}
 			if(input=="rna"){mat=obj@dis@nmat.rna}
 			if(input=="tag"){mat=obj@dis@nmat.tag}
+			if(input=="int"){mat=obj@dis@nmat.int}
 			pca<-prcomp_irlba(t(mat), n=n)
 			if(input=="dna"){
 				obj@pca@dmat.dna<-pca$x
@@ -705,6 +737,12 @@ print("Loading Paired-map functions...")
 				obj@pca@iter.tag<-0
 				obj@pca@method.tag<-"PCA"
 			}
+			if(input=="int"){
+				obj@pca@dmat.int<-pca$x
+				obj@pca@sdev.int<-pca$sdev
+				obj@pca@iter.int<-0
+				obj@pca@method.int<-"PCA"
+			}
 			return(obj)
 		}
 	}
@@ -719,10 +757,12 @@ print("Loading Paired-map functions...")
 			if(input=="dna"){mat=obj@pca@dmat.dna[,use.dims]}
 			if(input=="rna"){mat=obj@pca@dmat.rna[,use.dims]}
 			if(input=="tag"){mat=obj@pca@dmat.tag[,use.dims]}
+			if(input=="int"){mat=obj@pca@dmat.int[,use.dims]}
 			umap.out<-umap(mat, n_neighbors=k, verbose=T, n_threads=8, ...)
 			if(input=="dna"){obj@umap@vis.dna<-umap.out}
 			if(input=="rna"){obj@umap@vis.rna<-umap.out}
 			if(input=="tag"){obj@umap@vis.tag<-umap.out}
+			if(input=="int"){obj@umap@vis.int<-umap.out}
 			return(obj)
 		}
 		runTSNE<-function(obj, input, iter, use.dims,...){
@@ -734,10 +774,12 @@ print("Loading Paired-map functions...")
 			if(input=="dna"){mat=obj@pca@dmat.dna[,use.dims]}
 			if(input=="rna"){mat=obj@pca@dmat.rna[,use.dims]}
 			if(input=="tag"){mat=obj@pca@dmat.tag[,use.dims]}
+			if(input=="int"){mat=obj@pca@dmat.int[,use.dims]}
 			tsne.out<-Rtsne(mat, n_neighbors=k, pca=FALSE, verbose=T, num_threads=8, max_iter=iter, ...)
 			if(input=="dna"){obj@tsne@vis.dna<-tsne.out$Y}
 			if(input=="rna"){obj@tsne@vis.rna<-tsne.out$Y}
 			if(input=="tag"){obj@tsne@vis.tag<-tsne.out$Y}
+			if(input=="int"){obj@tsne@vis.int<-tsne.out$Y}
 			return(obj)
 		}
 
@@ -753,6 +795,7 @@ print("Loading Paired-map functions...")
 			if(input=="dna"){mat=obj@pca@dmat.dna[,use.dims]}
 			if(input=="rna"){mat=obj@pca@dmat.rna[,use.dims]}
 			if(input=="tag"){mat=obj@pca@dmat.tag[,use.dims]}
+			if(input=="int"){mat=obj@pca@dmat.int[,use.dims]}
 			knn.norm=get.knn(as.matrix(mat), k=k)
 			knn.norm = data.frame(from = rep(1:nrow(knn.norm$nn.index),  k), to = as.vector(knn.norm$nn.index), weight = 1/(1 + as.vector(knn.norm$nn.dist)))
 			nw.norm = graph_from_data_frame(knn.norm, directed = FALSE)
@@ -761,6 +804,7 @@ print("Loading Paired-map functions...")
 			if(input=="dna"){obj@cluster@id.dna=(lc.norm.combine$membership)}
 			if(input=="rna"){obj@cluster@id.rna=(lc.norm.combine$membership)}
 			if(input=="tag"){obj@cluster@id.tag=(lc.norm.combine$membership)}
+			if(input=="int"){obj@cluster@id.int=(lc.norm.combine$membership)}
 			return(obj)
 		}
 	} # end of cluster
@@ -827,18 +871,23 @@ print("Loading Paired-map functions...")
 			if(tolower(embedding.use)=="umap"&&tolower(embedding.type)=="rna"){mat=obj@umap@vis.rna}
 			if(tolower(embedding.use)=="umap"&&tolower(embedding.type)=="dna"){mat=obj@umap@vis.dna}
 			if(tolower(embedding.use)=="umap"&&tolower(embedding.type)=="tag"){mat=obj@umap@vis.tag}
+			if(tolower(embedding.use)=="umap"&&tolower(embedding.type)=="int"){mat=obj@umap@vis.int}
 			if(tolower(embedding.use)=="tsne"&&tolower(embedding.type)=="rna"){mat=obj@tsne@vis.rna}
 			if(tolower(embedding.use)=="tsne"&&tolower(embedding.type)=="dna"){mat=obj@tsne@vis.dna}
 			if(tolower(embedding.use)=="tsne"&&tolower(embedding.type)=="tag"){mat=obj@tsne@vis.tag}
-
+			if(tolower(embedding.use)=="tsne"&&tolower(embedding.type)=="int"){mat=obj@tsne@vis.int}
 			xdiff<-max(mat[,1])-min(mat[,1])
-			xlim<-c(min(mat[,1])-0.015*xdiff, max(mat[,2])+0.015*xdiff)
-			if(legend){ncol=as.integer(max(feature.value/25)+1); xlim=c(min(mat[,1])-0.015*xdiff, max(mat[,1])+(0.015+0.1*ncol)*xdiff)}
+			xlim<-c(min(mat[,1])-0.01*xdiff, max(mat[,1])+0.01*xdiff)
+			if(legend){ncol=as.integer(max(feature.value/25)+1); xlim=c(min(mat[,1])-0.01*xdiff, max(mat[,1])+(0.01+0.1*ncol)*xdiff)}
 			plot(mat, pch=pch,cex=cex,col=col[feature.value],main=title,xlab="Dim1", ylab="Dim2",xlim=xlim,...)
 			if(legend){legend("right", legend=c(1:max(feature.value)), border=NULL, pch=19, cex=0.5, ncol=ncol, bty="n", col=col[feature.value])}
-
 		}
 	} # end of plotFeature
+
+	{ ## plotPairedSeq 
+	} # end of plotPairedSeq
+	{ ## plotPairedTag 
+	} # end of plotPairedTag	
 
 	colPanel = c(
 		"#E31A1C", "#FFD700", "#771122", "#777711", "#1F78B4", "#68228B", "#AAAA44",
