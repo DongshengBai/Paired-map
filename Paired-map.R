@@ -679,25 +679,56 @@ print("Loading Paired-map functions...")
 	} # end of runNormDistance
 
 	{ ## runFusionMatrices
-		runFusionMatrices<-function(obj, use.rna, use.dna, use.tag, method){
+		runFusionMatrices<-function(obj, use.rna, use.dna, use.tag, ratio,method){
 			UseMethod("runFusionMatrices", obj)
 		}
-		runFusionMatrices.default<-function(obj, use.rna=T, use.dna=T, use.tag=F, method="hadamard"){
+		runFusionMatrices.default<-function(obj, use.rna=T, use.dna=T, use.tag=F, ratio=c(1,1), method="hadamard"){
 			if(missing(obj)){stop("Please specify an object...\n")}
 			method=tolower(method)
 			# specify input matrices
 			use.three=FALSE
-			if(use.rna && use.dna && !use.tag){mat1=obj@dis@nmat.rna;mat2=obj@dis@nmat.dna;cat("Fuse RNA and DNA matrices...\n");obj@dis@int.input="RNA+DNA"}
-			else if(use.rna && !use.dna && use.tag){mat1=obj@dis@nmat.rna;mat2=obj@dis@nmat.tag;cat("Fuse RNA and Tag matrices...\n");obj@dis@int.input="RNA+Tag"}
-			else if(!use.rna && use.dna && use.tag){mat1=obj@dis@nmat.dna;mat2=obj@dis@nmat.tag;cat("Fuse DNA and Tag matrices...\n");obj@dis@int.input="DNA+Tag"}
-			else if(use.rna && use.dna && use.tag){mat1=obj@dis@nmat.rna;mat2=obj@dis@nmat.dna;mat3=obj@dis@nmat.tag;use.three<-TRUE;cat("Fuse three matrices...\n");obj@dis@int.input="RNA+DNA+Tag"}
-			mat1<-minMaxScaling(mat1)
-			mat2<-minMaxScaling(mat2)
+			if(use.rna && use.dna && !use.tag){
+				mat1=minMaxScaling(obj@dis@nmat.rna)
+				if(obj@dis@method.rna=="jaccard"){mat1=1-mat1}
+				mat2=minMaxScaling(obj@dis@nmat.dna)
+				if(obj@dis@method.dna=="jaccard"){mat2=1-mat2}
+				cat("Fuse RNA and DNA matrices...\n")
+				obj@dis@int.input="RNA+DNA"
+			}else if(use.rna && !use.dna && use.tag){
+				mat1=minMaxScaling(obj@dis@nmat.rna)
+				if(obj@dis@method.rna=="jaccard"){mat1=1-mat1}
+				mat2=minMaxScaling(obj@dis@nmat.tag)
+				if(obj@dis@method.tag=="jaccard"){mat2=1-mat2}
+				cat("Fuse RNA and Tag matrices...\n")
+				obj@dis@int.input="RNA+Tag"
+			}else if(!use.rna && use.dna && use.tag){
+				mat1=minMaxScaling(obj@dis@nmat.dna)
+				if(obj@dis@method.dna=="jaccard"){mat1=1-mat1}
+				mat2=minMaxScaling(obj@dis@nmat.tag)
+				if(obj@dis@method.tag=="jaccard"){mat2=1-mat2}
+				cat("Fuse DNA and Tag matrices...\n")
+				obj@dis@int.input="DNA+Tag"
+			}else if(use.rna && use.dna && use.tag){
+				mat1=minMaxScaling(obj@dis@nmat.rna)
+				if(obj@dis@method.rna=="jaccard"){mat1=1-mat1}
+				mat2=minMaxScaling(obj@dis@nmat.dna)
+				if(obj@dis@method.dna=="jaccard"){mat2=1-mat2}
+				mat3=minMaxScaling(obj@dis@nmat.tag)
+				if(Obj@dis@method.tag=="jaccard"){mat3=1-mat3}
+				use.three<-TRUE
+				cat("Fuse three matrices...\n")
+				obj@dis@int.input="RNA+DNA+Tag"
+			}
 			if(use.three){mat3<-minMaxScaling(mat3)}
 			if(method=="hadamard"){
 				nmat.int<-hadamard.prod(mat1, mat2)
 				if(use.three){nmat.int<-hadamard.prod(nmat.int, mat3)}
 				obj@dis@int.method="hadamard"
+			}
+			else if(method=="add"){
+				nmat.int<-mat1*ratio[1]+mat2*ratio[2]
+				if(use.three){nmat.int<-nmat.int+mat3*ratio[3]}
+				obj@dis@int.method="add"
 			}
 			else{
 				stop(method, "not supported..", sep=" ")
