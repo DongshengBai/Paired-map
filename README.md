@@ -26,7 +26,7 @@ and LogMean normallize RNA matrix.
 <code>data<-runNormDistance(h1, input="dna")</code>
 <p>Calculate Euclidean matrix for RNA, and normOVE</p>
 <code>data<-runDistance(data,input="rna", cell.downsample = 1, feature.downsample = 1, method="euclidean")</code>
-<code>data<-runNormDistance(h1, input="rna")</code>
+<code>data<-runNormDistance(h1, input="rna", method="none")</code>
   
 ### 3. Matrices fusion
 <p> Fuse matrices from multi-modal datasets</p>
